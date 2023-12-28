@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/styles.css">
+    <title>Antarctica  Weather</title>
+</head>
+	
+<body>
+	<h1 class="site-title"> Base Orcadas Weather </h1>
+
+	<!-- Navigation Bar -->
+	<nav class="main-nav">
+	<ul>
+		<li><a href="/">Home</a></li>
+		<li><a href="/login">Login</a></li>
+		<li><a href="/search">Search</a></li>
+	</ul>
+	</nav>
+	
+	{% if error %}
+		<p style="background-color:#FFAAAA; color:#FF0000;"> {{error}} </p>
+	{% endif %}
+	
+	<div class="search-bar">
+        <form action="/search">
+			<label for="startDate">Start Date:</label>
+			<input type="date" id="startDate" name="startDate">
+			<label for="endDate">End Date:</label>
+			<input type="date" id="endDate" name="endDate">
+			
+			<label for="datatype">Datatype:</label>
+			<select id="datatype" name="datatype" size="1">
+				<option value="tmin"> Min temperature </option>
+				<option value="tmax"> Max temperature </option>
+				<option value="tavg"> Avg temperature </option>
+				<option value="prcp"> Precipitation </option>
+				<option value="snwd"> Snow Depth </option>
+			</select> <br />
+			
+			<input type="submit" formmethod="POST" value="Search"> <br />
+		</form>    
+	</div>
+	
+	{% if fp %}
+	
+		<div class="container">
+			<div class="center-section">
+				<h2>Temperature</h2>
+				
+				<div id="temperature-plot">
+					<img src="{{fp}}" alt="Generated user plot" width="640" height="480"/>
+				</div>
+			</div>
+		</div>
+		
+	{% endif %}
+	
+</body>
+	
+</html>
