@@ -29,40 +29,39 @@ def login():
 		
 		# Get all valid Admins from db
 		# SELECT Admins.userId, Admins.name FROM Admins INNER JOIN Users ON Admins.userId = Users.userId;
-		#print(request.form['admin'])
+		print(request.get_data())
 		
-		"""
-		# if checked login as admin
-		if(request.form['admin']):
+		# If checked login as admin
+		if(request.form.get("admin") == "True"):
 			admin_q = q.Query()
+			# Fix this later to actually make use of the Query class
 			admin_query = "SELECT Admins.userId, Admins.name FROM Admins INNER JOIN Users ON Admins.userId = Users.userId"
 			admins = admin_q.send_query(admin_query)
 			
 			print(admins)
-			print((request.form['userID'], request.form['username']))
+			#print((request.form['userID'], request.form['username']))
 			
-			if( (int(request.form['userID']), request.form['username']) in admins ):
-				# redirect to admin page
+			# If user is logging in as admin, check to see if they are an admin
+			if( ( int(request.form.get('userID')), request.form.get('username') ) in admins ):
 				return redirect(url_for("admin"))
-			# else return error
+			# Else return admin login error
 			error = "User ID / name is not an admin"
 			return render_template('login.html', error=error)
-		"""
 		
-		# If not trying to login as an admin, then just redirect to the search page
+		
+		# If logging in as normal user, then just redirect to the search page
 		for row in users:
 			userId = row[0]
 			name = row[1]
 
-			if(request.form['userID'] == str(userId) and request.form['username'] == str(name)):
+			if(request.form.get('userID') == str(userId) and request.form.get('username') == str(name)):
 				error = None
 				return redirect(url_for("search"))
 			else:
 				error = 'Invalid userID/username'
 		
 
-	# the code below is executed if the request method
-	# was GET or the credentials were invalid
+	# Else then GET the login form page
 	return render_template('login.html', error=error)
 
 
@@ -103,13 +102,13 @@ def search():
 	# was initially GET or the credentials were invalid
 	return render_template("search.html", error=None, datatype=None, start=None, end=None)
 
-"""
+
 @app.route("/admin", methods=["POST", "GET"])
 def admin():
 	error = None
 	
 	return render_template("admin.html", error=error)
-"""
+
 
 def generate_plot(start, end, datatype, dates, data):
 	fig, ax = plt.subplots()
