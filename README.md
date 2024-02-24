@@ -18,11 +18,37 @@ In no particular order:
 - [ ] Implement AI weather prediction based on decades of past weather trends
 	- [ ] With enough weather stations, project this to make a generalization for Antarctic weather as a whole
 
-
 ### Development
 
-For those who want to help with development, this project is just a Python Flask app that uses simple HTML/CSS templates as Flask endpoints. Everything to do with the UI and web app to interact with the `weather_database.sql` can be found in the `/flask` folder. The `/data_files` are the initial files created to store the all the original Base Orcadas weather data, with each file holding the raw response data from a request to the NCEI API. Finally, the rest of the code found in the root directory, namely `download_data.py` and `populate_db.py`, were helper scripts made to automate the download process of tens of thousands of datapoints, organize them to fit the DB design, and populate the DB. Once again, a better explanation of the initial idea can be found in the `Final Report.pdf`.
+For those who want to help with development, this project is just a Python Flask app that uses simple HTML/CSS templates as Flask endpoints. Everything to do with the UI and web app to interact with the `weather_database.sql` can be found in the `/flask` folder. The `/data_files` are the initial files created to store all the original Base Orcadas weather data, with each file holding the raw response from a request to the NCEI API. Finally, the rest of the code found in the root directory, namely `download_data.py` and `populate_db.py`, were helper scripts made to automate the download process of tens of thousands of data points, organize them to fit the DB design, and populate the DB. Once again, a better explanation of the initial idea can be found in the `Final Report.pdf`.
 
-To run the app, simply `git clone` and `cd flask`, then run `flask --app app run`. You will of course need Python3, Flask, and git installed to do this.
+#### Dependencies
 
+- Git
+- Python3
+	- This app was done in Python 3.10.12, but similar versions probably work just fine. Flask requires at least Python 3.8.
+- Python libraries
+	- matplotlib
+	- mysql-connector
+	- numpy
+	- Pytorch
+- Flask
+- MySQL
 
+#### Setting up the environment
+
+Once you've installed the dependencies and `git clone`-d, open a terminal and enter the MySQL CLI. Do this with `sudo mysql` for Linux or `mysql.exe -uroot -p` for Windows to login as root.
+
+First, add the database to your MySQL
+ - Run `source 'path/to/antarctica_weather_tracker/weather_database.sql';`
+Make a new MySQL user called `user1`. No password is needed.
+- `CREATE USER 'user1'@'localhost';`
+Give `user1` permissions on the weather database
+- `GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, JOIN, REFERENCES ON 'weather_database' TO 'user1'@'localhost';`
+
+The SQL database should be all set up. Next, exit MySQL and run the Flask app
+- `EXIT;`
+- `cd flask`
+- `flask --app app run`
+
+Now the project should be running on `localhost` or 127.0.0.1. Enter the IP in a web browser and you're set! A default admin user to login has an ID of `2` with a username `thomas`!
