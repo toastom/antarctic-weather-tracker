@@ -39,16 +39,18 @@ For those who want to help with development, this project is just a Python Flask
 
 Once you've installed the dependencies and `git clone`-d, open a terminal and enter the MySQL CLI. Do this with `sudo mysql` for Linux or `mysql.exe -uroot -p` for Windows to login as root.
 
-First, add the database to your MySQL
- - Run `source 'path/to/antarctica_weather_tracker/weather_database.sql';`
-Make a new MySQL user called `user1`. No password is needed.
-- `CREATE USER 'user1'@'localhost';`
-Give `user1` permissions on the weather database
-- `GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, JOIN, REFERENCES ON 'weather_database' TO 'user1'@'localhost';`
+- First, add the database to your MySQL
+	 - Run `source 'path/to/antarctica_weather_tracker/weather_database.sql';`
+- Make a new MySQL user called `user1`. No password is needed.
+	- `CREATE USER 'user1'@'localhost';`
+- Grant permissions to act on the database to the new user `user1`
+	- `GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, JOIN, REFERENCES ON 'weather_database' TO 'user1'@'localhost';`
 
-The SQL database should be all set up. Next, exit MySQL and run the Flask app
+Now the MySQL database should be all set up. Next, exit MySQL and run the Flask app
 - `EXIT;`
 - `cd flask`
 - `flask --app app run`
 
-Now the project should be running on `localhost` or 127.0.0.1. Enter the IP in a web browser and you're set! A default admin user to login has an ID of `2` with a username `thomas`!
+Now the project should be running on `localhost` or 127.0.0.1. Enter the IP in your favorite web browser and you're set! For testing it out, you can login with a default admin user
+- user ID: `2` 
+- username: `thomas`
