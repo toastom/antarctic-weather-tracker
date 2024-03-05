@@ -32,24 +32,67 @@ class WeatherModel(nn.Module):
 		#return preds[-1]
 		return preds[0]
 
-def impute(data, dp_index):
-	pass
+def impute(data_points):
+	imputed_data = [x for x in data_points]
+	
+	# For debugging imputation
+	#new_points = [None for x in data_points]
+	
+	if(None not in data_points):
+		return data_points
+	
+	last_non_null = None
+	for i in range(0, len(data_points)):
+		next_non_null = None
+		
+		if(data_points[i] != None):
+			last_non_null = data_points[i]
+		else:
+			# Last non-null point has already been acquired
+			# Get the next defined point on the right side of this point
+			j = i
+			while(next_non_null == None and j < len(data_points)):
+				if(data_points[j] != None):
+					next_non_null = data_points[j]
+				j = j + 1
+				""" Idk if this will eventually be needed. Prob catches an edge case
+				# if we're at the end and haven't found one yet, loop back around
+				if(j == len(data_points)):
+					j = 0
+					continue
+				"""
+			
+			imputed_data[i] = (last_non_null + next_non_null) / 2
+			#new_points[i] = imputed_data[i]	
+		
+	#print(f"Data points: {data_points[len(data_points)-11:]}")
+	#print(f"Imputed data: {imputed_data[len(imputed_data)-11:]} \n")
+	
+	# For debugging imputation
+	"""
+	fig, ax = plt.subplots()
+	plt.plot(range(len(data_points)-51, len(data_points)), data_points[len(data_points)-51:], c="b")
+	plt.plot(range(len(new_points)-51, len(new_points)), new_points[len(new_points)-51:], c="r")
+	#plt.plot(range(0, len(data_points)), data_points, c="b")
+	#plt.plot(range(0, len(new_points)), new_points, c="r")
+	
+	ax.scatter(range(len(data_points)-51, len(data_points)), data_points[len(data_points)-51:], color="blue")
+	ax.scatter(range(len(new_points)-51, len(new_points)), new_points[len(new_points)-51:], color="red")
+	#ax.scatter(range(0, len(data_points)), data_points, color="blue")
+	#ax.scatter(range(0, len(new_points)), new_points, color="red")
+	plt.show()
+	"""
+		
+	return imputed_data
 	
 # Normalize data by rescaling (min-max) to 0 -> 1 scale
 def normalize(data_points, dtype="tmin"):
 	normed_data = []
 	
-	# Temporarily fill in null values with something obviously wrong that won't affect min or max
-	# This is just a quick fix because for normalizing you can't have null values
-	# Replace with an impute() function later
-	for d in data_points:
-		if None in data_points:
-			d = data_points.index(None)
-			data_points[d] = 0.0000012345
-			#data_points[d] = impute(data_points, d)
+	imputed_data = impute(data_points)
 	
-	for i in data_points:
-		n = (i - min(data_points)) / (max(data_points) - min(data_points))
+	for i in imputed_data:
+		n = (i - min(imputed_data)) / (max(imputed_data) - min(imputed_data))
 		normed_data.append(n)
 		
 	return normed_data
@@ -83,12 +126,7 @@ def create_tensors(dataset, lookback):
 	x = []
 	y = []
 	for i in range(0, len(dataset) - lookback):
-		# Range of the feature to train on
 		feature = dataset[i : i+lookback]
-		
-		# Range of the feature to target and predict
-		# Still iterate through the whole 'feature' range for good measure,
-		# but plus one to predict a new point
 		target = dataset[i+1 : i+lookback+1]
 		
 		x.append(feature)
@@ -102,9 +140,12 @@ full_dataset = q.get_result_cols()
 dates = full_dataset[0]
 tmin  = full_dataset[1]
 
+#print(f"--- TMIN ---\n\n{tmin[len(tmin)-51:]}\n---\n")
+"""
 p_empty = percent_missing(tmin)
 print("Percent of missing data in tmin: %.2f %% " % p_empty)
-
+print("Length of tmin: " + str(len(tmin)))
+"""
 norm = normalize(tmin)
 
 window_size = 50
@@ -129,7 +170,7 @@ print(y_test)
 model = WeatherModel()
 optimizer = optim.Adam(model.parameters())
 # Loss function for calculating error and to train to minimize error
-loss_func = nn.MSELoss() # Mean squared error
+loss_func = nn.MSELoss() # MSE = Mean Square Error
 
 # Bug? Batch size must = 1 right now or else the model just converges its predictions
 loader = data.DataLoader(data.TensorDataset(x_train, y_train), shuffle=True, batch_size=1)
