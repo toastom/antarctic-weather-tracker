@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.utils.data as data
+import torch.utils.data as td
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
@@ -16,9 +16,9 @@ class WeatherModel(nn.Module):
 		super().__init__()
 		self.hidden_layers = 50
 		self.output_size = 1
+		# can change lookback as long as input_size is the same
 		self.lstm = nn.LSTM(input_size=1, hidden_size=self.hidden_layers, num_layers=1, batch_first=True)
 		
-		# hidden layer size, output_size
 		self.linear = nn.Linear(self.hidden_layers, self.output_size)
 
 	def forward(self, x):
@@ -29,8 +29,8 @@ class WeatherModel(nn.Module):
 		lstm_out, _ = self.lstm(x.view(len(x) ,1, -1))
 		preds = self.linear(lstm_out.view(len(x), -1))
 		
-		#return preds[-1]
-		return preds[0]
+		return preds #[-1]
+		#return preds[0]
 
 def impute(data_points):
 	imputed_data = [x for x in data_points]
@@ -96,20 +96,12 @@ def normalize(data_points, dtype="tmin"):
 		normed_data.append(n)
 		
 	return normed_data
-
-def percent_missing(data):
-	count = 0
-	for i in tmin:
-		if i is None:
-			count = count + 1
-	return (count / len(data)) * 100
 	
 
 # Create training and test sets
 def create_sets(data, window_size):
-	# For now just fill null values in data with some obvious outlier
 	window_size = window_size + 1
-	train_size = int(0.7 * window_size) + 1
+	train_size = int(0.8 * window_size) + 1
 	test_size  = window_size - train_size + 1
 	
 	# from the start of the window up to end of the training window
@@ -140,15 +132,9 @@ full_dataset = q.get_result_cols()
 dates = full_dataset[0]
 tmin  = full_dataset[1]
 
-#print(f"--- TMIN ---\n\n{tmin[len(tmin)-51:]}\n---\n")
-"""
-p_empty = percent_missing(tmin)
-print("Percent of missing data in tmin: %.2f %% " % p_empty)
-print("Length of tmin: " + str(len(tmin)))
-"""
 norm = normalize(tmin)
 
-window_size = 50
+window_size = 100
 tr, ts = create_sets(norm, window_size)
 print(f"Window size: {window_size}")
 print(f"Training set: {tr}")
@@ -158,13 +144,15 @@ print(f"Test set: {ts}")
 lookback = 1
 x_train, y_train = create_tensors(tr, lookback)
 x_test, y_test = create_tensors(ts, lookback)
-print(x_train.shape, y_train.shape)
-print(x_test.shape,  y_test.shape)
+print("x_train shape: ", x_train.shape, "\ty_train shape: ", y_train.shape)
+print("x_test shape: ", x_test.shape, "\ty_test shape: ", y_test.shape)
 
+"""
 print(x_train)
 print(x_test)
 print(y_train)
 print(y_test)
+"""
 
 # We have the dataset, now create the model
 model = WeatherModel()
@@ -172,21 +160,22 @@ optimizer = optim.Adam(model.parameters())
 # Loss function for calculating error and to train to minimize error
 loss_func = nn.MSELoss() # MSE = Mean Square Error
 
-# Bug? Batch size must = 1 right now or else the model just converges its predictions
-loader = data.DataLoader(data.TensorDataset(x_train, y_train), shuffle=True, batch_size=1)
+# Batch size must = 1 right now or else we get a dimension error
+# Not sure if shuffle should = True or False
+loader = td.DataLoader(td.TensorDataset(x_train, y_train), shuffle=True, batch_size=1) # shuffle=True
 
+# Train the dataset
 
-# Then train the dataset. RNNs repeatedly loop to retrain the model
-
-num_epochs = 1000
+num_epochs = 500
 for epoch in range(num_epochs):
 	# Tell the LSTM we're in training mode
 	model.train()
 	
-	for x_batch, y_batch in loader:
-		y_pred = model(x_batch)
-		# Input our bad predictions, then train the model to match our expected values
-		loss = loss_func(y_pred, y_batch)
+	#for x_batch, y_batch in loader:
+	for data, target in loader:
+		y_pred = model(data)
+		# Input our predictions, then train the model to match our expected values
+		loss = loss_func(y_pred, target)
 		# Reset the optimizer's biases and weights
 		optimizer.zero_grad()
 		
@@ -195,10 +184,8 @@ for epoch in range(num_epochs):
 		loss.backward()
 		optimizer.step()
 		
-	# Only validate the model on every 100th iteration
 	if(epoch % 100 != 0):
 		continue
-	#If so, validate the model and tell the LSTM we're in validation mode now
 	model.eval()
 	
 	# Get MSE (mean squared error) of the training and test parts
@@ -211,36 +198,76 @@ for epoch in range(num_epochs):
 	print("Epoch %d: train RMSE %.4f, test RMSE %.4f" % (epoch, train_rmse, test_rmse))
 	
 
-
-
 # Format data for plotting
-
-num_future_preds = 5
 
 dates_plot = dates[len(dates) - window_size :]
 day = datetime.timedelta(days=1)
 norm_plot  = norm[len(norm) - window_size :]
+
+future_preds = 5
 # add more days for future predictions
-for i in range(1, num_future_preds+1):
+for i in range(1, future_preds+1):
 	dates_plot.append( datetime.date(2023, 11, 10) + i*day )
 	norm_plot.append(np.nan)
 	
 # After training + validation, make future predictions
 model.eval()
-test_size = len(ts) - num_future_preds
+#test_size = len(ts) - num_future_preds
+#test_size = 40
+
 predictions = torch.tensor([])
-for i in range(test_size):
-	seq = torch.FloatTensor(ts[-test_size :])
+#predictions = torch.zeros(len(dates_plot)-future_preds, 1)
+print("predictions shape: ", predictions.shape)
+
+print("y_pred shape: ", y_pred.shape)
+print("y_pred: ", y_pred)
+
+"""
+#for i in range(test_size):
+for i in range(len(dates_plot)): # range(future_preds)
+	#seq = torch.FloatTensor(norm[i: test_size+i])
+	seq = torch.FloatTensor(norm[i : i+lookback])
 	
 	with torch.no_grad():
 		model.hidden = (torch.zeros(1, 1, model.hidden_layers), 
 						torch.zeros(1, 1, model.hidden_layers))
-		ts.append(model(seq).item())
-		test_tensor = torch.tensor(ts[-num_future_preds :])
-		predictions = torch.cat( (predictions, test_tensor) )
+		#ts.append(model(seq).item())
+		#ts.append(model(seq)[-1])
+		#test_tensor = torch.tensor(norm[: test_size])
+		#predictions = torch.cat( (predictions, test_tensor) )
+		#print(predictions)
+		model_output = torch.reshape(model(seq), (1, 1))
+		predictions = torch.cat((predictions, model_output), dim=0)
+"""
 
-print(f"len predictions = {len(predictions)}")
-print(f"predictions = {predictions}")
+with torch.no_grad():
+	train_tens = torch.FloatTensor(tr)
+	test_tens  = torch.FloatTensor(ts)
+	
+	
+	model_train = model(train_tens)
+	#model_train = torch.reshape(model(train_tens), (1, 1))
+	predictions = torch.cat((predictions, model_train), dim=0)
+	model_test  = model(test_tens)
+	#model_test  = torch.reshape(model(test_tens), (1, 1))
+	predictions = torch.cat((predictions, model_test),  dim=0)
+	
+	#model_output = torch.reshape(model(test_tens), (1, 1))
+	#model_output = model(test_tens)
+	#predictions = torch.cat((predictions, model_output), dim=0)
+
+
+#ew I'm sorry. VERY temp just to get the plot workkng across the whole dataset
+predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
+predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
+predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
+
+
+
+
+
+print(f"shape predictions = {predictions.shape}")
+#print(f"predictions = {predictions}")
 print(f"len dates = {len(dates_plot)}")
 
 # Plot data
