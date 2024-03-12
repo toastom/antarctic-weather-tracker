@@ -23,15 +23,10 @@ class WeatherModel(nn.Module):
 		self.linear = nn.Linear(self.hidden_layers, self.output_size)
 
 	def forward(self, x):
-		#x, _ = self.lstm(x)
-		#x = self.linear(x)
-		#return x
-		
 		lstm_out, _ = self.lstm(x.view(len(x) ,1, -1))
 		preds = self.linear(lstm_out.view(len(x), -1))
 		
-		return preds #[-1]
-		#return preds[0]
+		return preds
 
 def impute(data_points):
 	imputed_data = [x for x in data_points]
@@ -64,7 +59,6 @@ def impute(data_points):
 				"""
 			
 			imputed_data[i] = (last_non_null + next_non_null) / 2
-			#new_points[i] = imputed_data[i]	
 		
 	#print(f"Data points: {data_points[len(data_points)-11:]}")
 	#print(f"Imputed data: {imputed_data[len(imputed_data)-11:]} \n")
