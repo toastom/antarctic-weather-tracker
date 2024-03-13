@@ -27,7 +27,7 @@ class WeatherModel(nn.Module):
 		preds = self.linear(lstm_out.view(len(x), -1))
 		
 		return preds
-
+  
 def impute(data_points):
 	imputed_data = [x for x in data_points]
 	
@@ -104,7 +104,7 @@ def denormalize(data_points, mini, maxi, dtype="tmin"):
 # Create training and test sets
 def create_sets(data, window_size):
 	window_size = window_size + 1
-	train_size = int(0.7 * window_size) + 1
+	train_size = int(0.8 * window_size) + 1
 	test_size  = window_size - train_size + 1
 	
 	# from the start of the window up to end of the training window
@@ -138,6 +138,7 @@ tmin  = full_dataset[1]
 norm = normalize(tmin)
 
 window_size = 2000
+
 tr, ts = create_sets(norm, window_size)
 print(f"Window size: {window_size}")
 #print(f"Training set: {tr}")
@@ -150,8 +151,6 @@ x_test, y_test = create_tensors(ts, lookback)
 print("x_train shape: ", x_train.shape, "\ty_train shape: ", y_train.shape)
 print("x_test shape: ", x_test.shape, "\ty_test shape: ", y_test.shape)
 
-
-
 # We have the dataset, now create the model
 model = WeatherModel()
 optimizer = optim.Adam(model.parameters())
@@ -163,7 +162,6 @@ loss_func = nn.MSELoss() # MSE = Mean Square Error
 loader = td.DataLoader(td.TensorDataset(x_train, y_train), shuffle=True, batch_size=1)
 
 # Train the dataset
-
 num_epochs = 1200
 for epoch in range(num_epochs):
 	# Tell the LSTM we're in training mode
@@ -202,6 +200,7 @@ day = datetime.timedelta(days=1)
 norm_plot  = norm[len(norm) - window_size :]
 
 future_preds = 25
+
 # add more days for future predictions
 for i in range(1, future_preds+1):
 	dates_plot.append( datetime.date(2023, 11, 10) + i*day )
@@ -211,8 +210,6 @@ for i in range(1, future_preds+1):
 model.eval()
 
 predictions = torch.tensor([])
-print("predictions shape: ", predictions.shape)
-
 print("y_pred shape: ", y_pred.shape)
 print("y_pred: ", y_pred)
 
