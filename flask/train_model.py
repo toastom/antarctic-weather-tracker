@@ -8,6 +8,7 @@ import torch.utils.data as td
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
+import sys
 
 from query import Query
 
@@ -22,16 +23,11 @@ class WeatherModel(nn.Module):
 		self.linear = nn.Linear(self.hidden_layers, self.output_size)
 
 	def forward(self, x):
-		#x, _ = self.lstm(x)
-		#x = self.linear(x)
-		#return x
-		
 		lstm_out, _ = self.lstm(x.view(len(x) ,1, -1))
 		preds = self.linear(lstm_out.view(len(x), -1))
 		
-		return preds #[-1]
-		#return preds[0]
-
+		return preds
+  
 def impute(data_points):
 	imputed_data = [x for x in data_points]
 	
@@ -63,7 +59,6 @@ def impute(data_points):
 				"""
 			
 			imputed_data[i] = (last_non_null + next_non_null) / 2
-			#new_points[i] = imputed_data[i]	
 		
 	#print(f"Data points: {data_points[len(data_points)-11:]}")
 	#print(f"Imputed data: {imputed_data[len(imputed_data)-11:]} \n")
@@ -96,7 +91,15 @@ def normalize(data_points, dtype="tmin"):
 		normed_data.append(n)
 		
 	return normed_data
-	
+
+def denormalize(data_points, mini, maxi, dtype="tmin"):
+	denormed_data = []
+	for j in data_points:
+		#d = (j - mini) / (maxi - mini)
+		d = (maxi - mini) * j + mini
+		denormed_data.append(d)
+		
+	return denormed_data
 
 # Create training and test sets
 def create_sets(data, window_size):
@@ -134,11 +137,12 @@ tmin  = full_dataset[1]
 
 norm = normalize(tmin)
 
-window_size = 100
+window_size = 2000
+
 tr, ts = create_sets(norm, window_size)
 print(f"Window size: {window_size}")
-print(f"Training set: {tr}")
-print(f"Test set: {ts}")
+#print(f"Training set: {tr}")
+#print(f"Test set: {ts}")
 
 # x = feature; y = target
 lookback = 1
@@ -146,13 +150,6 @@ x_train, y_train = create_tensors(tr, lookback)
 x_test, y_test = create_tensors(ts, lookback)
 print("x_train shape: ", x_train.shape, "\ty_train shape: ", y_train.shape)
 print("x_test shape: ", x_test.shape, "\ty_test shape: ", y_test.shape)
-
-"""
-print(x_train)
-print(x_test)
-print(y_train)
-print(y_test)
-"""
 
 # We have the dataset, now create the model
 model = WeatherModel()
@@ -162,16 +159,14 @@ loss_func = nn.MSELoss() # MSE = Mean Square Error
 
 # Batch size must = 1 right now or else we get a dimension error
 # Not sure if shuffle should = True or False
-loader = td.DataLoader(td.TensorDataset(x_train, y_train), shuffle=True, batch_size=1) # shuffle=True
+loader = td.DataLoader(td.TensorDataset(x_train, y_train), shuffle=True, batch_size=1)
 
 # Train the dataset
-
-num_epochs = 500
+num_epochs = 1200
 for epoch in range(num_epochs):
 	# Tell the LSTM we're in training mode
 	model.train()
 	
-	#for x_batch, y_batch in loader:
 	for data, target in loader:
 		y_pred = model(data)
 		# Input our predictions, then train the model to match our expected values
@@ -179,8 +174,7 @@ for epoch in range(num_epochs):
 		# Reset the optimizer's biases and weights
 		optimizer.zero_grad()
 		
-		# Back-propagate the error over the hidden layer?
-		# "hidden layer" = the nodes with weights and biases that make the full transfer function?
+		# Back-propagate the error over the hidden layer
 		loss.backward()
 		optimizer.step()
 		
@@ -193,6 +187,7 @@ for epoch in range(num_epochs):
 	with torch.no_grad():
 		y_pred = model(x_train)
 		train_rmse = np.sqrt(loss_func(y_pred, y_train))
+		
 		y_pred = model(x_test)
 		test_rmse = np.sqrt(loss_func(y_pred, y_test))
 	print("Epoch %d: train RMSE %.4f, test RMSE %.4f" % (epoch, train_rmse, test_rmse))
@@ -204,7 +199,8 @@ dates_plot = dates[len(dates) - window_size :]
 day = datetime.timedelta(days=1)
 norm_plot  = norm[len(norm) - window_size :]
 
-future_preds = 5
+future_preds = 25
+
 # add more days for future predictions
 for i in range(1, future_preds+1):
 	dates_plot.append( datetime.date(2023, 11, 10) + i*day )
@@ -212,63 +208,44 @@ for i in range(1, future_preds+1):
 	
 # After training + validation, make future predictions
 model.eval()
-#test_size = len(ts) - num_future_preds
-#test_size = 40
 
 predictions = torch.tensor([])
-#predictions = torch.zeros(len(dates_plot)-future_preds, 1)
-print("predictions shape: ", predictions.shape)
-
 print("y_pred shape: ", y_pred.shape)
 print("y_pred: ", y_pred)
-
-"""
-#for i in range(test_size):
-for i in range(len(dates_plot)): # range(future_preds)
-	#seq = torch.FloatTensor(norm[i: test_size+i])
-	seq = torch.FloatTensor(norm[i : i+lookback])
-	
-	with torch.no_grad():
-		model.hidden = (torch.zeros(1, 1, model.hidden_layers), 
-						torch.zeros(1, 1, model.hidden_layers))
-		#ts.append(model(seq).item())
-		#ts.append(model(seq)[-1])
-		#test_tensor = torch.tensor(norm[: test_size])
-		#predictions = torch.cat( (predictions, test_tensor) )
-		#print(predictions)
-		model_output = torch.reshape(model(seq), (1, 1))
-		predictions = torch.cat((predictions, model_output), dim=0)
-"""
 
 with torch.no_grad():
 	train_tens = torch.FloatTensor(tr)
 	test_tens  = torch.FloatTensor(ts)
 	
-	
 	model_train = model(train_tens)
-	#model_train = torch.reshape(model(train_tens), (1, 1))
-	predictions = torch.cat((predictions, model_train), dim=0)
 	model_test  = model(test_tens)
-	#model_test  = torch.reshape(model(test_tens), (1, 1))
+	predictions = torch.cat((predictions, model_train), dim=0)
 	predictions = torch.cat((predictions, model_test),  dim=0)
+
 	
-	#model_output = torch.reshape(model(test_tens), (1, 1))
-	#model_output = model(test_tens)
-	#predictions = torch.cat((predictions, model_output), dim=0)
+	# Plot future dates now
+	# minus 2 because the model already predicts 2 future dates by default
+	# Go off the last prediction to plot the next
+	#for i in range(future_preds-2):
+	pred_tens = torch.FloatTensor(predictions[-future_preds+2:])
+	predictions = torch.cat((predictions, model(pred_tens)), dim=0)
 
-
-#ew I'm sorry. VERY temp just to get the plot workkng across the whole dataset
-predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
-predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
-predictions = torch.cat((predictions, torch.zeros(1, 1)),  dim=0)
-
-
-
-
+new_tmin = impute(tmin)
+temp_plot = denormalize(norm_plot, min(new_tmin), max(new_tmin))
+denorm_preds = denormalize(predictions.numpy(), min(new_tmin), max(new_tmin))
 
 print(f"shape predictions = {predictions.shape}")
-#print(f"predictions = {predictions}")
 print(f"len dates = {len(dates_plot)}")
+
+torch.save(model.state_dict(), "../weather_model.pt")
+
+# Plot data
+fig, ax = plt.subplots()
+plt.plot(dates_plot, temp_plot, c="g")
+plt.plot(dates_plot, denorm_preds, c="r")
+ax.scatter(dates_plot, temp_plot, color="green")
+ax.scatter(dates_plot, denorm_preds, color="red")
+ax.set_ylim([min(temp_plot), max(temp_plot)])
 
 # Plot data
 fig, ax = plt.subplots()
