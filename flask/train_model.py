@@ -284,22 +284,29 @@ def main(datatype, window_size, num_epochs, future_preds):
 	fig, ax = plt.subplots()
 	plt.plot(dates_plot, real_values, c="g")
 	plt.plot(dates_plot, denorm_preds, c="r")
-	ax.scatter(dates_plot, real_values, color="green")
-	ax.scatter(dates_plot, denorm_preds, color="red")
+	ax.scatter(dates_plot, real_values, color="green", label="Actual value")
+	ax.scatter(dates_plot, denorm_preds, color="red", label="Predicted value")
 	ax.set_ylim([min(real_values), max(real_values)])
-	ax.set_xlabel("Date")
+	ax.legend()
+	plt.title(f"Actual and Predicted {datatype} vs. Time")
+	plt.ylabel(f"{datatype} (F)")
+	plt.xlabel("Date")
+	plt.savefig(filename[:-3] + "_realplot.png")
 	
 	# Plot data
 	fig, ax = plt.subplots()
 	plt.plot(dates_plot, norm_plot, c="b")
 	plt.plot(dates_plot, predictions, c="r")
-	ax.scatter(dates_plot, norm_plot, color="blue")
-	ax.scatter(dates_plot, predictions, color="red")
+	ax.scatter(dates_plot, norm_plot, color="blue", label="Actual value")
+	ax.scatter(dates_plot, predictions, color="red", label="Predicted value")
 	ax.set_ylim([0, 1])
-	ax.set_xlabel("Date")
+	ax.legend()
+	plt.title(f"Normalized Actual and Predicted {datatype} vs. Time")
+	plt.ylabel(f"{datatype}")
+	plt.xlabel("Date")
+	plt.savefig(filename[:-3] + "_normplot.png")
 	
 	#plt.show()
-	# Save plots here later
 
 
 if(len(sys.argv) < 5):
