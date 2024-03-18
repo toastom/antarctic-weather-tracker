@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 import sys
+import os
 
 from query import Query
 
@@ -184,6 +185,20 @@ def train_model(num_epochs, x_train, y_train, x_test, y_test):
 		
 	return y_pred
 
+def construct_filename(datatype):
+	# EXAMPLE: 2024-03-17_21h03m18s_tmin.pt
+	
+	dt_now = datetime.datetime.now()
+	date_time_list = dt_now.isoformat().split('T')
+	isodate = date_time_list[0]
+	time = date_time_list[1].split(':')
+	
+	repo_path = os.path.abspath(".")
+	fpath = os.path.join(repo_path, "models")
+	if(not os.path.exists(fpath)):
+		os.mkdir(fpath)
+	filename = fpath + "/{}_{}h{}m{}s_{}.pt".format(isodate, time[0], time[1], int(float(time[2])), datatype)
+	return filename
 	
 def main(datatype, window_size, num_epochs, future_preds):
 	# Input handling
@@ -219,8 +234,14 @@ def main(datatype, window_size, num_epochs, future_preds):
 	print("y_pred shape: ", y_pred.shape)
 	print("y_pred: ", y_pred)
 	
-	# After training + validation, make future predictions
+	
+	# Save the model
 	model.eval()
+	filename = construct_filename(datatype)
+	torch.save(model.state_dict(), filename)
+	print(f"Saved trained model as {filename}")
+	
+	# After training + validation, make future predictions
 	predictions = torch.tensor([])
 
 	with torch.no_grad():
@@ -238,7 +259,7 @@ def main(datatype, window_size, num_epochs, future_preds):
 		#pred_tens = torch.FloatTensor(predictions[-future_preds+2:])
 		if(future_preds > 2):
 			pred_tens = torch.FloatTensor(predictions[-future_preds : -2])
-			predictions = torch.cat((predictions, model(pred_tens)), dim=0)		
+			predictions = torch.cat((predictions, model(pred_tens)), dim=0)
 		elif(future_preds == 1):
 			predictions = predictions[ : -1]
 		
@@ -259,8 +280,6 @@ def main(datatype, window_size, num_epochs, future_preds):
 	print(f"shape predictions = {predictions.shape}")
 	print(f"len dates = {len(dates_plot)}")
 
-	torch.save(model.state_dict(), "weather_model.pt")
-
 	# Plot data
 	fig, ax = plt.subplots()
 	plt.plot(dates_plot, real_values, c="g")
@@ -269,7 +288,7 @@ def main(datatype, window_size, num_epochs, future_preds):
 	ax.scatter(dates_plot, denorm_preds, color="red")
 	ax.set_ylim([min(real_values), max(real_values)])
 	ax.set_xlabel("Date")
-
+	
 	# Plot data
 	fig, ax = plt.subplots()
 	plt.plot(dates_plot, norm_plot, c="b")
@@ -279,7 +298,8 @@ def main(datatype, window_size, num_epochs, future_preds):
 	ax.set_ylim([0, 1])
 	ax.set_xlabel("Date")
 	
-	plt.show()
+	#plt.show()
+	# Save plots here later
 
 
 if(len(sys.argv) < 5):
@@ -290,5 +310,4 @@ if(len(sys.argv) < 5):
 # datatype one of tmin, tmax, tavg, prcp, snwd
 # NOTE: prcp and snwd preds will probably not be that accurate due to the amount of missing data
 main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
-
 
